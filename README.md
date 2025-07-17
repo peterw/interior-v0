@@ -1,4 +1,4 @@
-# Interior AI
+# interior-v0
 
 AI-powered interior design application that transforms room photos using advanced AI models.
 
@@ -63,7 +63,7 @@ In Convex Dashboard (https://dashboard.convex.dev):
 ### Fastest Option: Bypass Auth
 1. Use the environment variables above with dummy backend values
 2. Navigate directly to: http://localhost:3000/interior
-3. The Interior AI features will work with just Convex and FAL AI
+3. The app will work with just Convex and FAL AI
 
 ### To Fully Bypass Auth (Optional)
 Comment out the middleware check in `middleware.ts`:
@@ -114,14 +114,6 @@ npm run build
 - Navigate directly to `/interior`
 - Or comment out middleware checks
 - Or use production API URL if available
-
-## Key Features
-
-- Room transformation with multiple design styles
-- Canvas editor for masking and editing
-- Chat-based editing interface
-- Generation history tracking
-- Share functionality
 
 ## License
 
