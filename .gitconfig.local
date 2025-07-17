@@ -1,0 +1,24 @@
+[alias]
+    # Create a single commit with all session changes
+    session = "!f() { \
+        if [ -z \"$1\" ]; then \
+            echo 'Error: Please provide a commit message'; \
+            echo 'Usage: git session \"Your commit message\"'; \
+            exit 1; \
+        fi; \
+        git add -A && \
+        git commit -m \"$1\" -m \"\" -m \"🤖 Generated with [Claude Code](https://claude.ai/code)\" -m \"\" -m \"Co-Authored-By: Claude <noreply@anthropic.com>\"; \
+    }; f"
+    
+    # Quick PR creation with session changes
+    session-pr = "!f() { \
+        if [ -z \"$1\" ] || [ -z \"$2\" ]; then \
+            echo 'Error: Please provide branch name and commit message'; \
+            echo 'Usage: git session-pr branch-name \"Commit message\"'; \
+            exit 1; \
+        fi; \
+        git checkout -b \"$1\" && \
+        git add -A && \
+        git commit -m \"$2\" -m \"\" -m \"🤖 Generated with [Claude Code](https://claude.ai/code)\" -m \"\" -m \"Co-Authored-By: Claude <noreply@anthropic.com>\" && \
+        git push -u origin \"$1\"; \
+    }; f"

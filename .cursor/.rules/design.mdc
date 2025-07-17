@@ -1,0 +1,27 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Design Learnings from This Project
+1. Progressive Disclosure Pattern
+* Optional fields are now hidden by default and only revealed when needed or when they contain content
+* This creates a cleaner, more focused UI that emphasizes required fields first
+* Users can expand sections as needed, reducing cognitive load
+1. Consistency in Form Design
+* Single-column layout provides better readability and a clearer visual hierarchy
+* Each form field has a consistent structure with clear labeling and appropriate spacing
+* Optional fields are consistently marked and handled the same way throughout the application
+1. Visual Affordances
+* Chevron icons clearly indicate expandable sections
+* Icon selection helps users understand the purpose of each field (Info for description, FileText for instructions, MessageSquare for resources)
+* Border styling on collapsible sections provides clear visual boundaries
+1. Contextual Visibility
+* Fields automatically expand when they contain data, improving usability during editing
+* This balances between keeping the UI clean and ensuring users don't miss existing data
+* The reactive approach (using useEffect) ensures the UI stays in sync with the data model
+1. Improved Resource Management
+* Simplified the resources approach from file uploads to text input
+* Text-based approach is more versatile for storing conversation contexts and reference materials
+* "Reference text available" indicator provides clear feedback without cluttering the interface
+

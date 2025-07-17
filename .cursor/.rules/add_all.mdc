@@ -1,0 +1,14 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+IMPORTANT: 
+
+1) MINIMAL CODE CHANGES
+
+2) NO HACKY CODE FIXES
+
+3) DO NOT WRITE TESTS
+
+4) never build the project unless I EXPLICLTY TELL YOU 

@@ -1,0 +1,42 @@
+name: Auto Generate API Client
+
+on:
+  schedule:
+    - cron: '* * * * *'  # Every minute
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  generate-api:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Generate API client
+        run: npm run generate:prodapi
+        continue-on-error: true  # Don't fail if API is down
+        
+      - name: Check for changes and commit
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add lib/api/generated/
+          
+          if git diff --staged --quiet; then
+            echo "No changes detected - skipping commit"
+          else
+            echo "Changes detected - committing updates"
+            git commit -m "chore: auto-update generated API client"
+            git push
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

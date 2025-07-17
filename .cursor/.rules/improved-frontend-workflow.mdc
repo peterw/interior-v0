@@ -1,0 +1,46 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+Codebase Structure
+
+- We will be writing all frontend code in Next.js (App router)
+- We will use TailwindCSS, ShadCN components for all our styling.
+
+example route
+
+|- components (this will have all components for the route)
+    - Header.tsx
+    - … other components
+|- logic (This will have our data fetching and other related logic inside a shared hook)
+    - useDataFetching.tsx
+|- store (Global state management using zustand)
+    - exampleStore.tsx
+|- page.tsx (Actual File)
+
+
+Best Practices for Code:
+
+- UIs are a thin wrapper over data, you should avoid using local state (like use-state unless you have to, and it's not being used anywhere else in any other component.
+
+- Choose to create a new component abstraction when you're nesting conditional logic, or top level if/else statements. Ternaries are reserved for small, easily readable logic.
+
+- Separate out the business logic from the UI, use react custom hooks and create a hook in the /logic folder of the route. All use-effect functionality that depends on each other would be clustered in these reach hooks, avoiding making tiny hooks for every single functionality as they will cause tons of re renders of useEffect, instead keep one major hook, then add all component lifecycle, data filtering, data fetching, loading logic in that hook. Our hooks will primarily deal with data fetching and reading data. Whereas for setting data our components will have standardized functions inside their component files to directly access the backend services and update the data.
+
+- Choose global state management stores like zustand over multiple useStates, to manage data from one place i.e react custom hooks and then provide it elsewhere without having to fetch again and again and maintain full data control in a single place.
+
+- NEVER call APIs directly using axios, or fetch requests, you should always use the backend services functions created for you in the codebase which return typed data. i.e the GmB service functions.
+
+- Make sure all data, globalStates, and UI components that are consuming the data are fully typed with typescript interfaces that are being provided by the GmB.Service Methods.
+
+- You should never make your own types, always use the types provided by backend services. Do not make custom typescript interfaces by mapping returned data.
+
+- Global States should always be typed based on the types coming from backend services.
+
+- Do not do type casting, to manually provide UI with types that backend doesn’t offer. If some parameters doesn’t exist and user asks you to integrate them, Don’t and Tell the user why.
+
+
+- When calling backend services, do not map or typecast data, provide data according to the interface that the backend service is expecting.
+
+- setTimeouts are flaky and usually a hack. Provide a comment on why.

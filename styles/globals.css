@@ -1,0 +1,243 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 47.4% 11.2%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 47.4% 11.2%;
+
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 100% 50%;
+    --destructive-foreground: 210 40% 98%;
+
+    --ring: 215 20.2% 65.1%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 224 71% 4%;
+    --foreground: 213 31% 91%;
+
+    --muted: 223 47% 11%;
+    --muted-foreground: 215.4 16.3% 56.9%;
+
+    --accent: 216 34% 17%;
+    --accent-foreground: 210 40% 98%;
+
+    --popover: 224 71% 4%;
+    --popover-foreground: 215 20.2% 65.1%;
+
+    --border: 216 34% 17%;
+    --input: 216 34% 17%;
+
+    --card: 224 71% 4%;
+    --card-foreground: 213 31% 91%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 1.2%;
+
+    --secondary: 222.2 47.4% 11.2%;
+    --secondary-foreground: 210 40% 98%;
+
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+
+    --ring: 216 34% 17%;
+
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    line-height: 1.4;
+  }
+}
+
+@layer utilities {
+  /* Stripe-inspired animations */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 200ms ease-out;
+  }
+
+  /* Stripe-like card lift effect */
+  .card-lift {
+    transition: all 200ms ease-out;
+    cursor: pointer;
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    background-color: white;
+  }
+
+  .card-lift:hover {
+    transform: translateY(-4px) scale(1.01);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+    background-color: rgba(248, 250, 252, 0.8);
+    border-color: rgba(203, 213, 225, 0.6);
+  }
+
+  /* Scale up animation for connection states */
+  @keyframes scaleUp {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.05);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  .animate-scaleUp {
+    animation: scaleUp 200ms ease-out;
+  }
+
+  /* Progress bar grow animation for leads table */
+  @keyframes growBar {
+    from {
+      width: 0;
+    }
+    to {
+      width: var(--target-width, 100%);
+    }
+  }
+
+  .animate-growBar {
+    animation: growBar 1000ms ease-out;
+  }
+
+  /* Table skeleton loading animation */
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.6;
+    }
+  }
+
+  .animate-pulse {
+    animation: pulse 400ms ease-in-out infinite;
+  }
+
+  /* Custom spacing scale (8pt grid) */
+  .space-8pt > * + * {
+    margin-top: 8px;
+  }
+
+  .space-16pt > * + * {
+    margin-top: 16px;
+  }
+
+  .space-24pt > * + * {
+    margin-top: 24px;
+  }
+
+  .space-32pt > * + * {
+    margin-top: 32px;
+  }
+
+  /* Stripe-like notification banner */
+  @keyframes slideDown {
+    from {
+      transform: translateY(-100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .notification-banner {
+    animation: slideDown 300ms ease-out;
+  }
+
+  /* WCAG compliant colors */
+  .bg-yellow-stripe {
+    background-color: #fffbf2;
+  }
+
+  .text-yellow-stripe {
+    color: #FFB95C;
+  }
+
+  .bg-red-stripe {
+    background-color: #fff5f5;
+  }
+
+  .text-red-stripe {
+    color: #FF5C5C;
+  }
+
+  /* Progress bar specific styles for leads table */
+  .progress-bar-88 {
+    width: 88px;
+    height: 4px;
+    background-color: #F0F2F5;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 1000ms ease-out;
+  }
+
+  /* Bulk actions slide-down animation */
+  @keyframes slideDownBulk {
+    from {
+      transform: translateY(-20px);
+      opacity: 0;
+      max-height: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+      max-height: 100px;
+    }
+  }
+
+  .animate-slideDownBulk {
+    animation: slideDownBulk 300ms ease-out;
+  }
+}

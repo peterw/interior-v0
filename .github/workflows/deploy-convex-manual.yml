@@ -1,0 +1,46 @@
+name: Deploy Convex (Manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - development
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Deploy Convex functions
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
+        run: |
+          echo "Deploying to ${{ github.event.inputs.environment }}..."
+          npx convex deploy --yes
+      
+      - name: Deployment summary
+        run: |
+          echo "✅ Deployment complete!"
+          echo "🔗 Dashboard: https://dashboard.convex.dev/d/loyal-salamander-16"
+          echo "📝 Next steps:"
+          echo "   1. Verify functions are visible in dashboard"
+          echo "   2. Add OPENAI_API_KEY if not already configured"
+          echo "   3. Test the /marketing-assets route"

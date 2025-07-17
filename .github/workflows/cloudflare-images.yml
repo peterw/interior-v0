@@ -1,0 +1,52 @@
+name: Sync Images to Cloudflare
+
+on:
+  push:
+    paths:
+      - 'public/images/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync-images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: true
+          fetch-depth: 0
+          
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      
+      - name: Install dependencies
+        run: npm install form-data
+      
+      - name: Upload images to Cloudflare
+        env:
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          node scripts/sync-images.js
+      
+      - name: Commit mappings
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # Pull latest changes
+          git pull origin ${{ github.ref_name }} --rebase
+          
+          # Add and commit if there are changes
+          git add public/cf-images.json
+          if ! git diff --quiet --cached; then
+            git commit -m "Update Cloudflare image mappings [skip ci]"
+            git push origin HEAD:${{ github.ref_name }}
+          else
+            echo "No changes to commit"
+          fi

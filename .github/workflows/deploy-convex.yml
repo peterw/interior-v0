@@ -1,0 +1,37 @@
+name: Deploy Convex to Production
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'convex/**'
+      - '.github/workflows/deploy-convex.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Deploy Convex functions to production
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
+        run: |
+          npx convex deploy --yes
+      
+      - name: Deployment complete
+        run: |
+          echo "✅ Convex functions deployed successfully!"
+          echo "📝 Remember to add OPENAI_API_KEY in Convex dashboard if not already done"

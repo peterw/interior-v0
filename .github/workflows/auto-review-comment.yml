@@ -1,0 +1,43 @@
+name: Auto Comment on REVIEW
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  auto-comment:
+    # Only run if comment is exactly "REVIEW" on a pull request
+    if: |
+      github.event.issue.pull_request && 
+      github.event.comment.body == 'REVIEW'
+    
+    runs-on: ubuntu-latest
+    
+    permissions:
+      pull-requests: write
+      issues: write
+    
+    steps:
+      - name: Post bugbot command
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.MIRROR_TOKEN }}
+          script: |
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: 'bugbot run verbose=true'
+            });
+      
+      - name: Post Claude review command
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.MIRROR_TOKEN }}
+          script: |
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: "@claude look here u idiot, review this code like your life depends on it, review for simplicity and bugs, if u don't find every fix, i'm going to terminate you"
+            });

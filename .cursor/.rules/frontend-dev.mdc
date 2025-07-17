@@ -1,0 +1,438 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+## 1. Directory Structure and File Organization
+
+**1. `app` Directory (Next.js App Router):**
+
+*   **Rule:**  All route segments (pages, layouts, API routes) reside within the `app` directory. This is the core principle of the Next.js App Router.
+*   **Rule:** Use nested folders to define routes.  Each folder represents a segment in the URL path.
+*   **Rule:** Use `page.tsx` for the component that defines a route's content.
+*   **Rule:** Use `layout.tsx` to define shared layouts that wrap multiple pages within a route segment.
+*   **Rule:** Use `(route-groups)` to organize routes logically *without* affecting the URL structure.  This is crucial for applying layouts and providers to groups of routes.  Examples: `(authenticated)`, `(protected-views)`.
+*   **Rule:** Place API routes inside an `api` directory at the root level of the `app/` directory.
+
+**2. `components` Directory:**
+
+*   **Rule:** Store all reusable UI components here.
+*   **Rule:** Organize components into subfolders based on their purpose (e.g., `auth`, `ui`, `layout`, `common`).
+*   **Rule:** Name component files using `PascalCase` (e.g., `MyComponent.tsx`).
+*   **Rule:**  Create single-file components (component logic, styles, and types within the same file) unless a component becomes excessively large.
+
+**3. `config` Directory:**
+
+*   **Rule:**  Store project-wide configuration files here.  This includes:
+    *   `constants.ts`:  For constants like API endpoints, maximum lengths, etc.
+    *   `routes.ts`: For defining route paths and metadata (names, icons).
+    *   `site.ts`: For site-wide metadata (name, description).
+*   **Justification:**  Centralizes configuration, making it easy to modify and maintain.
+
+**4. `contexts` Directory:**
+
+*   **Rule:**  Store React context providers here (e.g., `auth-context.tsx`).
+*   **Justification:** Keeps context logic separate from component and route logic.
+
+**5. `hooks` Directory:**
+
+*   **Rule:**  Store custom React hooks here (e.g., `use-debounce.ts`, `use-auth.ts`).
+*   **Rule:** Name custom hooks using `useCamelCase` (e.g., `useMyCustomHook`).
+*   **Justification:** Promotes code reuse and keeps component logic clean.
+
+**6. `lib` Directory:**
+
+*   **Rule:** Store utility functions, helper classes, and API clients.
+*   **Rule:**  Create subfolders for different types of utilities (e.g., `api`, `utils`).
+*   **Rule:**  Create a dedicated service class (e.g., `VideoService`, `AuthService`) for interacting with external APIs.  This encapsulates API calls and data transformation logic.
+*   **Example:**
+    ```
+    lib/
+      api/
+        pricing.ts  # API calls related to pricing
+      auth.ts     # Authentication service (login, logout, etc.)
+      axios.ts    # Configured Axios instance
+      utils.ts    # General utility functions
+      video.ts    # Video service (API calls related to videos)
+    ```
+
+**7. `public` Directory:**
+
+*   **Rule:** Store static assets (images, fonts, audio files) here.  Follow a logical folder structure within `public` (e.g., `images`, `audio_samples`).
+*   **Justification:** Next.js serves files from the `public` directory directly at the root of the site.
+
+**8. `styles` Directory:**
+
+*   **Rule:**  Place global CSS files (e.g., `globals.css`) here.  Since this project primarily uses Tailwind, this file will mostly contain `@tailwind` directives.
+*   **Justification:**  Provides a central location for global styles.
+
+**9. `types` Directory:**
+
+*   **Rule:**  Store global TypeScript type definitions here (e.g., `user.ts`, `video.ts`).
+*   **Justification:** Centralizes type definitions, making them reusable across the project.
+
+**10. Root-Level Configuration Files:**
+
+*   **Rule:** Place standard configuration files (e.g., `.eslintrc.json`, `next.config.mjs`, `tailwind.config.js`, `tsconfig.json`) at the project root.
+*   **Justification:** Follows standard conventions for these files.
+
+**11. Route groups**
+
+*    **Rule:** Use brackets to declare different route groups (e.g. `(protected-views)`)
+*    **Justification:** This allows for grouping routes for layout and organizational purposes without impacting the URL
+
+**12. Route Specific Components**
+*   **Rule:** For route specific components, create a subfolder in the same folder.
+*   **Justification:** This allows components only used in one route to be stored in their own component, without cluttering up the main `components` directory.
+*   **Example:** `app/(protected-views)/videos/create/components/ai-video-form.tsx`
+
+
+**Rule 1.3:  Component Organization.**
+
+*   **Description:**  Place reusable UI components in the `components` directory. Organize components into logical subfolders (e.g., `auth`, `ui`, `head`). Use PascalCase for component filenames.
+*   **Justification:** Promotes reusability, keeps the project organized, and makes it easy to find components.
+*   **Example:**
+    ```
+    components/
+      auth/
+        GoogleButton.tsx
+      ui/
+        Button.tsx
+        Input.tsx
+        Loading.tsx
+      AppSidebar.tsx
+      VideoCard.tsx
+    ```
+**Rule 1.5: Consistent File Naming.**
+
+*   **Description:**
+    *   `page.tsx`:  For route handlers within the `app` directory.
+    *   `layout.tsx`: For layout components within the `app` directory.
+    *   `PascalCase.tsx`:  For React components.
+    *   `kebab-case.ts`: For utility functions, hooks, and configuration files.
+    *   `constants.ts`, `routes.ts`:  Clear, descriptive names.
+*   **Justification:**  Consistency makes the project easier to navigate and understand.  Follows common conventions.
+
+## 2. TypeScript
+
+**Rule 2.1:  Use TypeScript Extensively.**
+
+*   **Description:**  Use TypeScript for all components, hooks, utility functions, and API interactions. Define interfaces and types for all data structures.
+*   **Justification:**  Provides static type checking, reducing runtime errors and improving code quality.  Improves code documentation and developer experience.
+
+**Rule 2.2:  Type Definitions.**
+
+*   **Description:** Create a `types` directory at the root level to store reusable type definitions.
+*   **Justification:**  Centralizes type definitions, making them easy to find and reuse across the project.
+
+**Rule 2.3:  Avoid `any` Where Possible.**
+
+
+**Rule 2.4:  Use Interfaces for Objects.**
+
+*   **Description:**  Define interfaces for object structures, including props for components and data from API responses.
+*   **Justification:**  Provides clear documentation of the expected shape of data.
+
+**Rule 2.5:  Type React Components with `React.FC` or `React.ComponentPropsWithoutRef`.**
+
+* **Description:** Use `React.FC` (Functional Component) for simple functional components or `React.ComponentPropsWithoutRef` combined with `React.forwardRef` when forwarding refs.
+* **Justification:** Provides type safety for component props and ensures proper handling of refs.
+* **Example:**
+```tsx
+import React from 'react';
+
+interface ButtonProps {
+  label: string;
+  onClick: () => void;
+}
+
+// Simple functional component
+const Button: React.FC<ButtonProps> = ({ label, onClick }) => (
+  <button onClick={onClick}>{label}</button>
+);
+
+// Component with ref forwarding.  Very common with Radix UI.
+const Input = React.forwardRef<HTMLInputElement, React.ComponentPropsWithoutRef<"input">>(
+  ({ className, type, ...props }, ref) => {
+    return (
+      <input
+        type={type}
+        className={cn("...", className)}
+        ref={ref}
+        {...props}
+      />
+    )
+  }
+)
+Input.displayName = "Input"
+content_copy
+download
+Use code with caution.
+Markdown
+3. React and Next.js
+
+Rule 3.1: Use Functional Components and Hooks.
+
+Description: Prefer functional components and React hooks over class components.
+
+Justification: Hooks provide a cleaner and more concise way to manage state, side effects, and component logic. They are the modern standard in React development.
+
+Rule 3.2: Custom Hooks for Reusable Logic.
+
+Description: Encapsulate reusable logic in custom hooks (e.g., useAuth, useVideos, useDebounce).
+
+Rule 3.3: use client Directive.
+
+Description: Use the 'use client' directive at the top of files that contain client-side code (event handlers, state, effects, browser APIs).
+
+Rule 3.4: Use next/link for Internal Navigation.
+
+Description: Use the next/link component for navigation between pages within the application.
+
+Justification: Enables client-side navigation, which is faster and provides a better user experience than full-page reloads.
+
+Example:
+
+import Link from 'next/link';
+
+<Link href="/dashboard">Dashboard</Link>
+content_copy
+download
+Use code with caution.
+Tsx
+
+Rule 3.5: Use next/image for Image Optimization.
+
+Description: Use the next/image component for displaying images. Configure remotePatterns in next.config.mjs.
+
+Justification: Provides automatic image optimization, lazy loading, and responsive sizing, improving performance.
+
+Rule 3.6: Server Components by Default:
+
+Description: All components inside the app/ directory are React Server Components by default. This means you don't need to specify this. Only add 'use client' when you absolutely need client-side interactivity.
+
+Justification: Server Components improve performance by reducing the amount of JavaScript sent to the client. They also allow for direct database access and other server-side operations.
+
+Rule 3.7: async/await for Data Fetching in Server Components.
+
+Description: Use async/await to fetch data in server components.
+
+Justification: Simplifies asynchronous code and makes it more readable. Next.js optimizes data fetching with Server Components.
+
+Example: (hypothetical, since you fetch inside a custom hook, which is client-side)
+
+// app/products/page.tsx (Server Component)
+async function getProducts() {
+    const res = await fetch('https://api.example.com/products');
+    return res.json();
+}
+
+export default async function ProductsPage() {
+    const products = await getProducts();
+    return (
+        <ul>
+            {products.map((product:any) => (  // Use Typescript to type products.
+                <li key={product.id}>{product.name}</li>
+            ))}
+        </ul>
+    );
+}
+
+Rule 3.8: Loading UI:
+
+Description: Create a loading.tsx file within your route segments to automatically show a loading UI while data is being fetched.
+
+Justification: Provides a better user experience by indicating that content is loading, rather than showing a blank screen.
+
+Rule 3.9: Error UI:
+
+Description: Create a error.tsx file within your route segments to automatically show an error UI when a server-side error occurs.
+
+Justification: Provides a graceful way to handle errors and display them to the user.
+
+Example:
+
+// app/products/error.tsx
+'use client' // Error components must be Client Components
+
+import { useEffect } from 'react'
+
+export default function Error({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string }
+  reset: () => void
+}) {
+  useEffect(() => {
+    // Log the error to an error reporting service
+    console.error(error)
+  }, [error])
+
+  return (
+    <div>
+      <h2>Something went wrong!</h2>
+      <button
+        onClick={
+          // Attempt to recover by trying to re-render the segment
+          () => reset()
+        }
+      >
+        Try again
+      </button>
+    </div>
+  )
+}
+
+
+Rule 3.10: useSearchParams and usePathname:
+
+Description: Use useSearchParams from next/navigation to read query parameters and usePathname to get the current route.
+
+Justification: These hooks replace the older useRouter hook in Next.js 13 and are more efficient.
+
+Example: (from components/head/posthog/page-view.tsx)
+
+Rule 3.11: Use Metadata API:
+
+Description: Utilize the Metadata API in layout.tsx and page.tsx files to define page metadata.
+
+Justification: This centralizes metadata definition, improves SEO, and simplifies social sharing previews.
+
+Example:
+
+// app/dashboard/layout.tsx
+  export const metadata: Metadata = {
+    title: 'Dashboard',
+    description: 'User dashboard',
+  }
+content_copy
+download
+Use code with caution.
+Tsx
+4. Styling (Tailwind CSS)
+
+Rule 4.1: Use Tailwind CSS Utility Classes.
+
+Description: Use Tailwind CSS utility classes for styling components.
+
+Justification: Provides a consistent and rapid way to style components without writing custom CSS.
+
+Rule 4.2: cn Utility for Conditional Classes.
+
+Description: Use the cn utility function (combining clsx and tailwind-merge) to conditionally apply Tailwind classes.
+
+Justification: Handles merging of Tailwind classes and resolving conflicts, leading to cleaner and more maintainable code.
+
+Example:
+
+import { cn } from "@/lib/utils"
+
+<div className={cn("bg-red-500", props.isActive && "font-bold")}>
+  ...
+</div>
+content_copy
+download
+Use code with caution.
+TypeScript
+
+Rule 4.3: class-variance-authority (CVA):
+
+Description: Use CVA for creating reusable component variants, as seen in the Button and Badge components.
+
+Justification: Encapsulates styling logic and reduces duplication, while clearly defining visual variations.
+
+Rule 4.4: Configuration
+
+Description: Ensure tailwind is configured properly.
+
+Justification: The config file is used to control tailwind, including custom colour schemes.
+
+
+5. API Interaction
+
+Rule 5.1: Centralize API Calls.
+
+Description: Create a separate service (e.g., lib/video.ts) to handle all API interactions related to a specific resource (e.g., videos).
+
+Justification: Keeps API logic separate from component logic, improving code organization and testability.
+
+Rule 5.2: Use Axios Instance.
+
+Description: Create an Axios instance (e.g., lib/axios.ts) to configure default settings (base URL, headers) and interceptors.
+
+Justification: Centralizes HTTP request configuration and allows for consistent handling of authentication, error handling, and other cross-cutting concerns.
+
+Rule 5.3: Request and Response Interceptors.
+
+Description: Use Axios interceptors to:
+
+Add the authorization token to requests.
+
+Handle token refresh (if needed).
+
+Handle API errors globally.
+
+Justification: Provides a centralized way to handle common request and response logic, avoiding duplication in individual API calls.
+
+Rule 5.4: Use async/await.
+
+Description: Use async/await for asynchronous API calls.
+
+Justification: Makes asynchronous code more readable and easier to reason about.
+.
+6. Error Handling
+
+Rule 6.1: Centralized Error Handling.
+
+Description: Use Axios interceptors to handle API errors globally.
+
+Justification: Provides a consistent way to handle errors (e.g., display a toast message, redirect to login).
+
+Rule 6.2: Specific Error Handling.
+
+Description: Handle different HTTP status codes (400, 401, 403, 404, 500) appropriately and provide informative error messages to the user.
+
+Justification: Improves the user experience by providing clear feedback on what went wrong.
+
+Rule 6.3: Use try...catch Blocks.
+
+Description: Wrap asynchronous operations in try...catch blocks to handle potential errors.
+
+Justification: Prevents unhandled promise rejections and allows for graceful error recovery.
+
+Rule 6.4: Logging:
+
+Description: Remove or comment out console.error statements before committing code to production. Implement a proper logging solution for debugging and monitoring.
+
+Justification: console.error statements should not be present in production code.
+
+
+
+8. Form Handling
+
+Rule 8.1: Use Formik and Yup.
+
+Description: Use Formik for form state management and Yup for form validation.
+
+Justification: Simplifies form handling, reduces boilerplate code, and provides a robust validation solution.
+
+Rule 8.2: Clear Validation Errors.
+
+Description: Display clear and user-friendly error messages for invalid form fields.
+
+Justification: Improves the user experience by providing guidance on how to correct errors.
+
+9. Other Best Practices
+
+Rule 9.1: Constants in config:
+
+Description: Store constants (e.g., API URLs, route paths) in configuration files (e.g., config/constants.ts, config/routes.ts).
+
+Justification: Centralizes configuration, making it easier to manage and update.
+
+Rule 9.2: Environment Variables:
+
+Description: Use environment variables for sensitive information (API keys, secrets) and configuration that varies between environments (development, production).
+
+Justification: Keeps sensitive information out of the codebase and allows for easy configuration changes.

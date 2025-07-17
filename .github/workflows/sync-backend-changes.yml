@@ -1,0 +1,276 @@
+name: Sync Backend Changes to Main Repo
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'backend/**'
+
+permissions:
+  issues: write
+  pull-requests: write
+  contents: read
+
+jobs:
+  sync-backend:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.head.repo.full_name == github.repository
+
+    steps:
+      - name: Checkout Frontend PR
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+      
+      - name: Get Backend Changes
+        id: backend-changes
+        run: |
+          # Get the base commit for the PR
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          
+          # Check if there are any changes in the backend folder
+          CHANGED_FILES=$(git diff --name-only $BASE_SHA..$HEAD_SHA | grep '^backend/' || true)
+          
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No backend changes detected"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          echo "Backend changes detected:"
+          echo "$CHANGED_FILES"
+          echo "has_changes=true" >> $GITHUB_OUTPUT
+          
+          # Export the list of changed files
+          echo "changed_files<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGED_FILES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: Checkout Backend Repo
+        if: steps.backend-changes.outputs.has_changes == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: peterw/localrank
+          token: ${{ secrets.MIRROR_TOKEN }}
+          path: backend-repo
+          fetch-depth: 0
+
+      - name: Create Feature Branch
+        if: steps.backend-changes.outputs.has_changes == 'true'
+        working-directory: backend-repo
+        run: |
+          # Create a unique branch name
+          BRANCH_NAME="sync-frontend-pr-${{ github.event.pull_request.number }}"
+          
+          # Fetch latest main
+          git fetch origin main
+          git checkout -b $BRANCH_NAME origin/main
+          
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_ENV
+      
+      - name: Apply Backend Changes
+        id: apply-changes
+        if: steps.backend-changes.outputs.has_changes == 'true'
+        run: |
+          # Save current directory
+          FRONTEND_DIR=$(pwd)
+          
+          # Get list of changed files
+          CHANGED_FILES="${{ steps.backend-changes.outputs.changed_files }}"
+          
+          # Process each changed file
+          echo "$CHANGED_FILES" | while IFS= read -r file; do
+            if [ -z "$file" ]; then
+              continue
+            fi
+            
+            # Get the relative path without 'backend/' prefix
+            RELATIVE_PATH=${file#backend/}
+            TARGET_FILE="backend-repo/$RELATIVE_PATH"
+            TARGET_DIR=$(dirname "$TARGET_FILE")
+            
+            echo "Processing: $file -> $TARGET_FILE"
+            
+            # Check if file was deleted
+            if [ ! -f "$FRONTEND_DIR/$file" ]; then
+              echo "File deleted: $file"
+              if [ -f "$TARGET_FILE" ]; then
+                rm -f "$TARGET_FILE"
+                echo "Deleted $TARGET_FILE"
+              fi
+              continue
+            fi
+            
+            # Create target directory if needed
+            mkdir -p "$TARGET_DIR"
+            
+            # Copy the file
+            cp "$FRONTEND_DIR/$file" "$TARGET_FILE"
+            echo "Copied $file to $TARGET_FILE"
+          done
+          
+          # Check if there are any changes
+          cd backend-repo
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No changes detected after applying files"
+            echo "has_actual_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_actual_changes=true" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Commit and Push Changes
+        if: steps.backend-changes.outputs.has_changes == 'true' && steps.apply-changes.outputs.has_actual_changes == 'true'
+        working-directory: backend-repo
+        run: |
+          # Check if there are changes to commit
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          
+          # Stage all changes
+          git add -A
+          
+          # Create commit message
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          PR_URL="${{ github.event.pull_request.html_url }}"
+          
+          git commit -m "Sync backend changes from frontend PR #${{ github.event.pull_request.number }}" \
+                     -m "" \
+                     -m "Frontend PR: $PR_TITLE" \
+                     -m "Source: $PR_URL" \
+                     -m "" \
+                     -m "Auto-generated from localrank-new repository"
+          
+          # Push the branch
+          git push origin ${{ env.branch_name }} --force
+      
+      - name: Create or Update PR
+        if: steps.backend-changes.outputs.has_changes == 'true' && steps.apply-changes.outputs.has_actual_changes == 'true'
+        working-directory: backend-repo
+        env:
+          GH_TOKEN: ${{ secrets.MIRROR_TOKEN }}
+        run: |
+          PR_TITLE="[Frontend Sync] ${{ github.event.pull_request.title }}"
+          
+          # Create PR body file to handle multiline content properly
+          cat > pr-body.md << 'PREOF'
+          ## Summary
+          
+          This PR automatically syncs backend changes from the frontend repository.
+          
+          ### Source PR
+          - Frontend PR: ${{ github.event.pull_request.html_url }}
+          - Author: @${{ github.event.pull_request.user.login }}
+          
+          ### Changed Files
+          ```
+          ${{ steps.backend-changes.outputs.changed_files }}
+          ```
+          
+          ### Original PR Description
+          ${{ github.event.pull_request.body }}
+          
+          ---
+          ⚠️ **Note**: This PR was automatically generated. Please review the changes carefully before merging.
+          PREOF
+          
+          # Check if PR already exists
+          EXISTING_PR=$(gh pr list --base main --head "${{ env.branch_name }}" --json number --jq '.[0].number' || echo "")
+          
+          if [ -n "$EXISTING_PR" ]; then
+            echo "Updating existing PR #$EXISTING_PR"
+            gh pr edit "$EXISTING_PR" --title "$PR_TITLE" --body-file pr-body.md
+            echo "pr_url=https://github.com/peterw/localrank/pull/$EXISTING_PR" >> $GITHUB_ENV
+          else
+            echo "Creating new PR"
+            PR_URL=$(gh pr create --base main --head "${{ env.branch_name }}" --title "$PR_TITLE" --body-file pr-body.md --repo peterw/localrank)
+            echo "pr_url=$PR_URL" >> $GITHUB_ENV
+          fi
+      
+      - name: Comment on Frontend PR
+        if: steps.backend-changes.outputs.has_changes == 'true' && steps.apply-changes.outputs.has_actual_changes == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const comment = `🤖 **Backend Sync Bot**
+            
+            Backend changes detected! I've created a PR in the backend repository:
+            
+            🔗 Backend PR: ${{ env.pr_url }}
+            
+            Please ensure the backend PR is reviewed and merged before merging this frontend PR.`;
+            
+            // Check if we already commented
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const botComment = comments.data.find(comment => 
+              comment.user.login === 'github-actions[bot]' && 
+              comment.body.includes('Backend Sync Bot')
+            );
+            
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: comment
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: comment
+              });
+            }
+      
+      - name: Add Label
+        if: steps.backend-changes.outputs.has_changes == 'true' && steps.apply-changes.outputs.has_actual_changes == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            try {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: ['backend-changes']
+              });
+            } catch (error) {
+              console.log('Failed to add label, it might not exist:', error.message);
+              // Try to create the label
+              try {
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: 'backend-changes',
+                  color: 'FEF2C0',
+                  description: 'PR contains changes to backend folder'
+                });
+                // Retry adding the label
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  labels: ['backend-changes']
+                });
+              } catch (createError) {
+                console.log('Could not create or add label:', createError.message);
+              }
+            }

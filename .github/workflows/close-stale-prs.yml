@@ -1,0 +1,58 @@
+name: Close Stale PRs
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+permissions:
+  pull-requests: write
+  issues: write
+
+jobs:
+  close-stale-prs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Close Stale PRs
+        uses: actions/stale@v9
+        with:
+          # PR specific settings
+          stale-pr-message: |
+            This PR has been automatically closed due to inactivity for 3 weeks.
+            
+            If you'd like to continue working on this, please:
+            1. Reopen the PR
+            2. Merge the latest changes from main
+            3. Push your updates
+            
+            Thank you for your contribution! 🙏
+          
+          close-pr-message: 'Closing due to inactivity. Feel free to reopen if needed.'
+          
+          # Only process PRs, not issues
+          only-pr: true
+          
+          # Mark PR as stale after 21 days (3 weeks) of inactivity
+          days-before-pr-stale: 21
+          
+          # Close PR immediately after marking as stale
+          days-before-pr-close: 0
+          
+          # Labels
+          stale-pr-label: 'stale'
+          
+          # Exempt PRs with these labels from being marked stale
+          exempt-pr-labels: 'pinned,security,in-progress,do-not-close'
+          
+          # Remove stale label when PR is updated
+          remove-stale-when-updated: true
+          
+          # Don't close PRs with assignees
+          exempt-all-pr-assignees: true
+          
+          # Process up to 30 PRs per run
+          operations-per-run: 30
+          
+          # Debug mode (set to true for testing)
+          debug-only: false

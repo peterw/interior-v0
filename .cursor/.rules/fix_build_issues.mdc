@@ -1,0 +1,8 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+fix the build issues with minimal code changes
+
+"npm run build"

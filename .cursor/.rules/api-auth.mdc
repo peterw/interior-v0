@@ -1,0 +1,141 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+---
+description: Rules for handling API authentication in the application
+globs: ["app/(protected-views)/**/*.tsx", "lib/api/**/*.ts"]
+alwaysApply: true
+---
+
+# API Authentication Rules
+
+This project uses two methods for making authenticated API calls: a shared Axios instance and a generated API client.
+
+## 1. Recommended Pattern: Using Shared Axios Instance
+
+The preferred method for making API calls is using the shared Axios instance:
+
+```typescript
+import axiosInstance from '@/lib/axios';
+import { API_URL } from '@/config/constants';
+import { AxiosError } from 'axios';
+
+// Example GET request with SWR
+const { data, error } = useSWR<ResponseType>(
+  `${API_URL}/api/palette/endpoint/`,
+  async (url) => {
+    const response = await axiosInstance.get(url);
+    return response.data;
+  }
+);
+
+// Example POST request
+try {
+  const response = await axiosInstance.post(
+    `${API_URL}/api/palette/endpoint/`,
+    payload
+  );
+  // Handle success
+} catch (error) {
+  if (axios.isAxiosError(error)) {
+    const errorData = error.response?.data;
+    // Handle error
+  }
+}
+```
+
+### Key Points:
+- Always import `axiosInstance` from `@/lib/axios`
+- Use `API_URL` from `@/config/constants` for endpoints
+- Handle errors using `axios.isAxiosError` type guard
+- The instance automatically handles:
+  - Authentication headers
+  - Token refresh
+  - Error interceptors
+  - Network error events
+
+## 2. Alternative: Using Generated ApiService
+
+While the generated `ApiService` can be used, it requires careful consideration:
+
+```typescript
+import { ApiService } from '@/lib/api/palette';
+
+try {
+  const response = await ApiService.apiPaletteEndpointMethod();
+  // Handle success
+} catch (error) {
+  // Handle error
+}
+```
+
+### Important Considerations:
+- DO NOT configure `OpenAPI.BASE` or `OpenAPI.HEADERS` in components
+- Verify authentication headers are properly set
+- Test token refresh behavior works as expected
+- Consider migrating to the shared Axios instance pattern for consistency
+
+## Error Handling Best Practices
+
+Always implement proper error handling:
+
+```typescript
+try {
+  // API call
+} catch (error) {
+  console.error("Operation failed:", error);
+  let errorDetail = 'An unexpected error occurred.';
+  
+  if (axios.isAxiosError(error)) {
+    const errorData = error.response?.data as any;
+    errorDetail = errorData?.detail || 
+                 errorData?.message || 
+                 JSON.stringify(errorData) || 
+                 error.message;
+  }
+  
+  toast({
+    title: "Error",
+    description: errorDetail,
+    variant: "destructive"
+  });
+}
+```
+
+## Using with SWR
+
+When using SWR for data fetching:
+
+```typescript
+// Define a type-safe fetcher
+const fetcher = async <T,>(url: string): Promise<T> => {
+  const response = await axiosInstance.get<T>(url);
+  return response.data;
+};
+
+// Use in components
+const { 
+  data,
+  error,
+  isLoading 
+} = useSWR<ResponseType, AxiosError>(
+  `${API_URL}/endpoint`,
+  fetcher,
+  { revalidateOnFocus: false }
+);
+```
+
+## File Organization
+
+- Place API-related types in `@/lib/api/palette/models/`
+- Keep API service definitions in `@/lib/api/palette/services/`
+- Store shared API utilities in `@/lib/api/`
+
+## Security Considerations
+
+- Never expose sensitive tokens in client-side code
+- Use environment variables for API keys and secrets
+- Implement proper CORS headers on the backend
+- Handle token expiration and refresh gracefully 
