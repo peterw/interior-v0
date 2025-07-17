@@ -52,19 +52,17 @@ export default function NotFound() {
             onClick={() => router.back()}
             className="gap-2"
           >
-            <span className="flex items-center gap-1">
-              <ArrowLeft className="size-4" />
-              Go back
-            </span>
+            <ArrowLeft className="size-4" />
+            Go back
           </Button>
-          <Link href="/" passHref>
-            <Button variant="default" className="gap-2">
-              <span className="flex items-center gap-1">
-                <Home className="size-4" />
-                Return home
-              </span>
-            </Button>
-          </Link>
+          <Button
+            variant="default"
+            onClick={() => router.push('/')}
+            className="gap-2"
+          >
+            <Home className="size-4" />
+            Return home
+          </Button>
         </motion.div>
 
         {/* Visual Elements */}

@@ -87,6 +87,23 @@ export function CustomStyleUpload({ open, onOpenChange, onStyleCreated }: Custom
     setIsUploading(true);
 
     try {
+      // First, analyze the images to extract style characteristics
+      const formData = new FormData();
+      referenceImages.forEach((img) => {
+        formData.append("images", img.file);
+      });
+
+      const analysisResponse = await fetch("/api/interior/analyze-style", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!analysisResponse.ok) {
+        throw new Error("Failed to analyze style images");
+      }
+
+      const analysisData = await analysisResponse.json();
+
       // Convert images to base64
       const imagePromises = referenceImages.map(async (img) => {
         const buffer = await img.file.arrayBuffer();
@@ -99,11 +116,13 @@ export function CustomStyleUpload({ open, onOpenChange, onStyleCreated }: Custom
 
       const referenceImageData = await Promise.all(imagePromises);
 
-      // Create the custom style
+      // Create the custom style with analysis data
       const styleId = await createCustomStyle({
         name: name.trim(),
         description: description.trim(),
         referenceImages: referenceImageData,
+        prompt: analysisData.prompt,
+        extractedCharacteristics: analysisData.characteristics,
         isPublic,
         tags
       });

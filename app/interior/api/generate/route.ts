@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 
 // In-memory storage for share links (in production, use database)
 const shareCache = new Map<string, any>();
+
+// Create Convex client
+const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,6 +16,7 @@ export async function POST(request: NextRequest) {
     const style = formData.get("style") as string;
     const maskData = formData.get("mask") as string | null;
     const prompt = formData.get("prompt") as string | null;
+    const customStyleId = formData.get("customStyleId") as string | null;
 
     if (!imageFile || !style) {
       return NextResponse.json(
@@ -22,6 +29,32 @@ export async function POST(request: NextRequest) {
     const imageBuffer = await imageFile.arrayBuffer();
     const imageBase64 = Buffer.from(imageBuffer).toString("base64");
     const imageDataUrl = `data:${imageFile.type};base64,${imageBase64}`;
+
+    // Check if this is a custom style
+    const isCustomStyle = style.startsWith("k") && style.length > 20; // Convex IDs start with 'k'
+    let customStyleData = null;
+    
+    if (isCustomStyle) {
+      try {
+        // Use the new query that handles both public and private styles
+        customStyleData = await convex.query(api.interior.getCustomStyleById, {
+          styleId: style as Id<"interiorCustomStyles">,
+        });
+        
+        if (!customStyleData) {
+          return NextResponse.json(
+            { error: "Custom style not found or not accessible" },
+            { status: 404 }
+          );
+        }
+      } catch (error) {
+        console.error("Error fetching custom style:", error);
+        return NextResponse.json(
+          { error: "Failed to fetch custom style" },
+          { status: 500 }
+        );
+      }
+    }
 
     // Style-specific prompts for different variations
     const stylePrompts: Record<string, string[]> = {
@@ -87,7 +120,23 @@ export async function POST(request: NextRequest) {
       ]
     };
 
-    const prompts = stylePrompts[style] || stylePrompts["modern-minimalist"];
+    let prompts: string[];
+    
+    if (isCustomStyle && customStyleData) {
+      // Use custom style prompt with variations
+      const basePrompt = customStyleData.prompt;
+      const characteristics = customStyleData.extractedCharacteristics;
+      
+      prompts = [
+        basePrompt,
+        `${basePrompt} with emphasis on ${characteristics?.colors?.join(', ')} colors`,
+        `${basePrompt} featuring ${characteristics?.materials?.join(', ')} materials`,
+        `${basePrompt} with ${characteristics?.atmosphere} atmosphere and ${characteristics?.lighting} lighting`
+      ];
+    } else {
+      prompts = stylePrompts[style] || stylePrompts["modern-minimalist"];
+    }
+    
     const results: string[] = [];
 
     // Generate 4 variations using BFL API

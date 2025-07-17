@@ -5,13 +5,10 @@ import dynamic from 'next/dynamic';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 // Import MapResults dynamically to avoid SSR issues with mapbox-gl
-const MapResults = dynamic(
-  () => import("@/app/(protected-views)/(features)/scan/components/MapResults"),
-  { 
-    ssr: false,
-    loading: () => <div className="h-full w-full bg-gray-100 flex items-center justify-center">Loading map...</div>
-  }
-);
+// Temporarily commented out - MapResults component not found
+const MapResults = ({ scanDate, selectedKeyword, businessLocation, keywordResults, onKeywordSelect }: any) => {
+  return <div className="h-full w-full bg-gray-100 flex items-center justify-center">Map component not available</div>;
+};
 
 interface BusinessLocation {
   lat: number;

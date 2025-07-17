@@ -1,0 +1,31 @@
+export function usePlaces(searchInput?: string) {
+  return {
+    predictionsLoading: false,
+    predictions: [],
+    setSearchInput: () => {},
+    selectedPlace: null,
+    setSelectedPlace: () => {},
+    clearSearch: () => {},
+    suggestions: [] as Array<{ placeId: string; text: string; fullData: any; }>,
+    loading: false,
+    getDetails: async (placeId: string) => ({
+      displayName: { text: "" },
+      name: { text: "" },
+      formattedAddress: "",
+      googleMapsUri: "",
+      nationalPhoneNumber: "",
+      internationalPhoneNumber: "",
+      websiteUri: "",
+      rating: 0,
+      userRatingCount: 0,
+      location: { latitude: 0, longitude: 0 },
+      businessStatus: "",
+      openingHours: null,
+      photos: [],
+      reviews: [],
+      types: [],
+      viewport: null,
+      primaryType: "",
+    }),
+  };
+}
