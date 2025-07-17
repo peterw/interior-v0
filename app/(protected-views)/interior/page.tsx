@@ -4,7 +4,8 @@ import { useReducer, useEffect, useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, ArrowRight, Home, Sparkles, Download, Paintbrush, Share2, Copy, CheckCircle, Palette, Plus } from "lucide-react";
+import { ArrowLeft, ArrowRight, Home, Sparkles, Download, Paintbrush, Share2, Copy, CheckCircle, Palette, Plus, Library } from "lucide-react";
+import Link from "next/link";
 import { ImageUploader } from "./components/ImageUploader";
 import { StyleGrid } from "./components/StyleGrid";
 import { ResultsGallery } from "./components/ResultsGallery";
@@ -22,6 +23,7 @@ import { CreditDisplay } from "./components/CreditDisplay";
 import { TweakModal } from "./components/TweakModal";
 import { WelcomeHero } from "./components/WelcomeHero";
 import { toast } from "@/components/hooks/use-toast";
+import { useSearchParams } from "next/navigation";
 
 interface AppState {
   currentStep: number;
@@ -70,6 +72,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
 }
 
 export default function InteriorAIPage() {
+  const searchParams = useSearchParams();
   const {
     uploadedImage,
     selectedStyle,
@@ -94,11 +97,38 @@ export default function InteriorAIPage() {
     tweakModalOpen,
     setTweakModalOpen,
     tweakingIndex,
+    setGeneratedImageFromHistory,
   } = useInteriorAI();
 
   const [state, dispatch] = useReducer(appReducer, initialState);
   const { currentStep, showEditModal, editedImage, portalLink, showWelcome } = state;
   const [showCustomStyleUpload, setShowCustomStyleUpload] = useState(false);
+  
+  // Handle reopened designs from history and style selection
+  useEffect(() => {
+    const styleId = searchParams.get('styleId');
+    const originalImage = searchParams.get('originalImage');
+    const generatedImage = searchParams.get('generatedImage');
+    
+    if (originalImage) {
+      handleImageUpload(originalImage);
+      dispatch({ type: 'SET_STEP', payload: 2 });
+    }
+    
+    if (styleId) {
+      handleStyleSelect(styleId);
+      // If only styleId is provided (from style library), go to step 1
+      if (!originalImage && !generatedImage) {
+        dispatch({ type: 'SET_STEP', payload: 1 });
+      }
+    }
+    
+    if (generatedImage) {
+      // If we have a generated image, load it and jump to review step
+      setGeneratedImageFromHistory(generatedImage);
+      dispatch({ type: 'SET_STEP', payload: 4 });
+    }
+  }, [searchParams, handleImageUpload, handleStyleSelect, setGeneratedImageFromHistory]);
   
   // Auto-advance to next step when generation completes
   useEffect(() => {
@@ -217,8 +247,14 @@ export default function InteriorAIPage() {
               </div>
               
               <div className="bg-white rounded-xl shadow-xl border border-gray-100 p-8">
-                {/* Custom Style Button */}
-                <div className="flex justify-end mb-6">
+                {/* Custom Style Buttons */}
+                <div className="flex justify-end gap-2 mb-6">
+                  <Link href="/interior/styles">
+                    <Button variant="outline" className="gap-2">
+                      <Library className="w-4 h-4" />
+                      Style Library
+                    </Button>
+                  </Link>
                   <Button
                     variant="outline"
                     onClick={() => setShowCustomStyleUpload(true)}

@@ -33,7 +33,7 @@ export function PremiumFeatureDialog({
           <Button
             onClick={() => {
               onOpenChange(false)
-              window.location.href = dashboardMenuRoutes.upgrade.path
+              window.location.href = "/upgrade"
             }}
             className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:from-purple-700 hover:to-blue-700"
           >

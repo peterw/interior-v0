@@ -21,5 +21,5 @@ export function hasActiveSubscription(user: User | null): boolean {
  * @returns string path to redirect to
  */
 export function getPostLoginRedirectPath(user: User | null): string {
-  return hasActiveSubscription(user) ? dashboardMenuRoutes.dashboard.path : `${dashboardMenuRoutes.upgrade.path}?tab=growth`
+  return hasActiveSubscription(user) ? dashboardMenuRoutes.dashboard.path : `/upgrade?tab=growth`
 }

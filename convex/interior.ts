@@ -129,6 +129,13 @@ export const createGeneration = mutation({
       generationId,
     });
     
+    // Increment custom style usage count if applicable
+    if (args.customStyleId) {
+      await ctx.runMutation(internal.interior.incrementStyleUsage, {
+        styleId: args.customStyleId,
+      });
+    }
+    
     return generationId;
   },
 });
@@ -386,6 +393,58 @@ export const getPublicStyles = query({
   },
 });
 
+// Query to get user's custom styles
+export const getUserCustomStyles = query({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    
+    const userId = identity.email || identity.subject;
+    const limit = args.limit || 50;
+    
+    return await ctx.db
+      .query("interiorCustomStyles")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .order("desc")
+      .take(limit);
+  },
+});
+
+// Query to get a custom style by ID (public access for public styles)
+export const getCustomStyleById = query({
+  args: {
+    styleId: v.id("interiorCustomStyles"),
+  },
+  handler: async (ctx, args) => {
+    const style = await ctx.db.get(args.styleId);
+    
+    if (!style) {
+      return null;
+    }
+    
+    // If style is public, return it
+    if (style.isPublic) {
+      return style;
+    }
+    
+    // If style is private, check ownership
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null; // Private style, no auth
+    }
+    
+    const userId = identity.email || identity.subject;
+    if (style.userId !== userId) {
+      return null; // Private style, not owner
+    }
+    
+    return style;
+  },
+});
+
 // Mutation to create custom style
 export const createCustomStyle = mutation({
   args: {
@@ -397,6 +456,17 @@ export const createCustomStyle = mutation({
         mask: v.optional(v.string()),
       })
     ),
+    prompt: v.optional(v.string()),
+    extractedCharacteristics: v.optional(
+      v.object({
+        colors: v.array(v.string()),
+        materials: v.array(v.string()),
+        furniture: v.array(v.string()),
+        lighting: v.string(),
+        atmosphere: v.string(),
+        designElements: v.array(v.string()),
+      })
+    ),
     isPublic: v.boolean(),
     tags: v.array(v.string()),
   },
@@ -406,15 +476,15 @@ export const createCustomStyle = mutation({
     
     const userId = identity.email || identity.subject;
     
-    // TODO: Analyze reference images to extract characteristics
-    // For now, create a basic prompt
-    const prompt = `custom interior design style inspired by reference images, ${args.name} style`;
+    // Use provided prompt or create a basic one
+    const prompt = args.prompt || `custom interior design style inspired by reference images, ${args.name} style`;
     
     const styleId = await ctx.db.insert("interiorCustomStyles", {
       userId,
       name: args.name,
       description: args.description,
       referenceImages: args.referenceImages,
+      extractedCharacteristics: args.extractedCharacteristics,
       prompt,
       isPublic: args.isPublic,
       usageCount: 0,
@@ -424,6 +494,21 @@ export const createCustomStyle = mutation({
     });
     
     return styleId;
+  },
+});
+
+// Internal mutation to increment style usage count
+export const incrementStyleUsage = mutation({
+  args: {
+    styleId: v.id("interiorCustomStyles"),
+  },
+  handler: async (ctx, args) => {
+    const style = await ctx.db.get(args.styleId);
+    if (style) {
+      await ctx.db.patch(args.styleId, {
+        usageCount: style.usageCount + 1,
+      });
+    }
   },
 });
 
@@ -602,5 +687,122 @@ export const createShare = mutation({
     });
     
     return shareId;
+  },
+});
+
+// Mutation to delete a generation
+export const deleteGeneration = mutation({
+  args: {
+    generationId: v.id("interiorGenerations"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    
+    const userId = identity.email || identity.subject;
+    
+    // Verify ownership
+    const generation = await ctx.db.get(args.generationId);
+    if (!generation || generation.userId !== userId) {
+      throw new Error("Generation not found or unauthorized");
+    }
+    
+    // Delete associated storage files
+    if (generation.originalImageStorageId) {
+      await ctx.storage.delete(generation.originalImageStorageId);
+    }
+    if (generation.generatedImageStorageId) {
+      await ctx.storage.delete(generation.generatedImageStorageId);
+    }
+    if (generation.maskStorageId) {
+      await ctx.storage.delete(generation.maskStorageId);
+    }
+    
+    // Delete from history
+    const history = await ctx.db
+      .query("interiorHistory")
+      .withIndex("by_user_recent", (q) => q.eq("userId", userId))
+      .filter((q) => q.eq(q.field("generationId"), args.generationId))
+      .first();
+    
+    if (history) {
+      await ctx.db.delete(history._id);
+    }
+    
+    // Delete any shares
+    const shares = await ctx.db
+      .query("interiorShares")
+      .withIndex("by_generation", (q) => q.eq("generationId", args.generationId))
+      .collect();
+    
+    for (const share of shares) {
+      await ctx.db.delete(share._id);
+    }
+    
+    // Delete the generation
+    await ctx.db.delete(args.generationId);
+    
+    return { success: true };
+  },
+});
+
+// Mutation to delete custom style
+export const deleteCustomStyle = mutation({
+  args: {
+    styleId: v.id("interiorCustomStyles"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    
+    const userId = identity.email || identity.subject;
+    
+    // Verify ownership
+    const style = await ctx.db.get(args.styleId);
+    if (!style || style.userId !== userId) {
+      throw new Error("Style not found or unauthorized");
+    }
+    
+    // Delete the style
+    await ctx.db.delete(args.styleId);
+    
+    return { success: true };
+  },
+});
+
+// Mutation to update custom style
+export const updateCustomStyle = mutation({
+  args: {
+    styleId: v.id("interiorCustomStyles"),
+    name: v.optional(v.string()),
+    description: v.optional(v.string()),
+    isPublic: v.optional(v.boolean()),
+    tags: v.optional(v.array(v.string())),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    
+    const userId = identity.email || identity.subject;
+    
+    // Verify ownership
+    const style = await ctx.db.get(args.styleId);
+    if (!style || style.userId !== userId) {
+      throw new Error("Style not found or unauthorized");
+    }
+    
+    // Update fields
+    const updates: any = {
+      updatedAt: Date.now(),
+    };
+    
+    if (args.name !== undefined) updates.name = args.name;
+    if (args.description !== undefined) updates.description = args.description;
+    if (args.isPublic !== undefined) updates.isPublic = args.isPublic;
+    if (args.tags !== undefined) updates.tags = args.tags;
+    
+    await ctx.db.patch(args.styleId, updates);
+    
+    return { success: true };
   },
 });

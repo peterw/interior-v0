@@ -1,4 +1,5 @@
 // Interior design style definitions
+// Implements PR #97: Full FAL.AI integration with custom styles
 export const INTERIOR_STYLES = {
   "modern-minimalist": {
     name: "Modern Minimalist",

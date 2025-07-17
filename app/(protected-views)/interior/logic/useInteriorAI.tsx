@@ -20,8 +20,8 @@ export function useInteriorAI() {
   const [finalImage, setFinalImage] = useState<string | null>(null);
   const [isGeneratingFinal, setIsGeneratingFinal] = useState(false);
 
-  const handleImageUpload = useCallback((file: File | null, preview: string) => {
-    if (!file) {
+  const handleImageUpload = useCallback((fileOrUrl: File | string | null, preview?: string) => {
+    if (!fileOrUrl) {
       setUploadedImage(null);
       setUploadedFile(null);
       setGeneratedImages([]);
@@ -29,8 +29,26 @@ export function useInteriorAI() {
       setMaskDataUrl(null);
       return;
     }
-    setUploadedImage(preview);
-    setUploadedFile(file);
+    
+    if (typeof fileOrUrl === 'string') {
+      // Handle URL case (from history)
+      setUploadedImage(fileOrUrl);
+      // Create a dummy file for API compatibility
+      fetch(fileOrUrl)
+        .then(res => res.blob())
+        .then(blob => {
+          const file = new File([blob], 'reopened-image.jpg', { type: 'image/jpeg' });
+          setUploadedFile(file);
+        })
+        .catch(err => {
+          console.error('Failed to load image from URL:', err);
+          setError('Failed to load image from history');
+        });
+    } else {
+      // Handle File case (normal upload)
+      setUploadedImage(preview || '');
+      setUploadedFile(fileOrUrl);
+    }
     setError(null);
   }, []);
 
@@ -63,6 +81,10 @@ export function useInteriorAI() {
         const formData = new FormData();
         formData.append("image", uploadedFile);
         formData.append("style", selectedStyle);
+        // If it's a custom style (Convex ID), also pass it as customStyleId
+        if (selectedStyle.startsWith("k") && selectedStyle.length > 20) {
+          formData.append("customStyleId", selectedStyle);
+        }
         if (maskDataUrl) {
           formData.append("mask", maskDataUrl);
         }
@@ -166,6 +188,10 @@ export function useInteriorAI() {
       formData.append("style", selectedStyle);
       formData.append("selectedIndex", selectedPreviewIndex.toString());
       formData.append("isFinal", "true");
+      // If it's a custom style (Convex ID), also pass it as customStyleId
+      if (selectedStyle.startsWith("k") && selectedStyle.length > 20) {
+        formData.append("customStyleId", selectedStyle);
+      }
       if (maskDataUrl) {
         formData.append("mask", maskDataUrl);
       }
@@ -245,6 +271,12 @@ export function useInteriorAI() {
     }
   }, [tweakingIndex, uploadedFile, selectedStyle, previewImages]);
 
+  // Add method to load generated image from history
+  const setGeneratedImageFromHistory = useCallback((imageUrl: string) => {
+    setGeneratedImages([imageUrl]);
+    setFinalImage(imageUrl);
+  }, []);
+
   return {
     uploadedImage,
     selectedStyle,
@@ -270,5 +302,6 @@ export function useInteriorAI() {
     tweakModalOpen,
     setTweakModalOpen,
     tweakingIndex,
+    setGeneratedImageFromHistory,
   };
 }
