@@ -59,7 +59,12 @@ export async function POST(request: NextRequest) {
     const result = await fal.subscribe("fal-ai/flux-pro/kontext/max/multi", {
       input: {
         prompt: enhancedPrompt,
-        image_urls: [originalImage, maskedImageDataUrl]
+        image_urls: [originalImage, maskedImageDataUrl],
+        num_images: 1,
+        guidance_scale: 3.5,
+        output_format: "jpeg",
+        safety_tolerance: "2",
+
       },
       logs: true,
       onQueueUpdate: (update) => {

@@ -23,6 +23,7 @@ export function SimpleMaskCanvas({
   const maskCanvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const [originalDimensions, setOriginalDimensions] = useState({ width: 0, height: 0 });
   const [hasMask, setHasMask] = useState(false);
   const historyRef = useRef<ImageData[]>([]);
   const historyIndexRef = useRef(-1);
@@ -117,6 +118,72 @@ export function SimpleMaskCanvas({
     return tempCanvas.toDataURL('image/png');
   };
 
+  // Get mask data at original image dimensions
+  const getMaskDataAtOriginalSize = () => {
+    const maskCanvas = maskCanvasRef.current;
+    
+    if (!maskCanvas || !hasMask || !originalDimensions.width || !originalDimensions.height) return null;
+    
+    // Create a new canvas at original image dimensions
+    const originalSizeCanvas = document.createElement('canvas');
+    originalSizeCanvas.width = originalDimensions.width;
+    originalSizeCanvas.height = originalDimensions.height;
+    const originalSizeCtx = originalSizeCanvas.getContext('2d');
+    
+    if (!originalSizeCtx) return null;
+    
+    // Fill with black background
+    originalSizeCtx.fillStyle = 'black';
+    originalSizeCtx.fillRect(0, 0, originalDimensions.width, originalDimensions.height);
+    
+    // Get the mask data from the display canvas
+    const maskCtx = maskCanvas.getContext('2d');
+    if (!maskCtx) return null;
+    
+    const maskData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+    
+    // Create a new ImageData at original size
+    const originalSizeMaskData = originalSizeCtx.createImageData(originalDimensions.width, originalDimensions.height);
+    
+    // Scale the mask data to original dimensions
+    const scaleX = originalDimensions.width / maskCanvas.width;
+    const scaleY = originalDimensions.height / maskCanvas.height;
+    
+    for (let y = 0; y < originalDimensions.height; y++) {
+      for (let x = 0; x < originalDimensions.width; x++) {
+        const sourceX = Math.floor(x / scaleX);
+        const sourceY = Math.floor(y / scaleY);
+        
+        const sourceIndex = (sourceY * maskCanvas.width + sourceX) * 4;
+        const targetIndex = (y * originalDimensions.width + x) * 4;
+        
+        // Check if the source pixel is masked (has purple color)
+        const r = maskData.data[sourceIndex];
+        const g = maskData.data[sourceIndex + 1];
+        const b = maskData.data[sourceIndex + 2];
+        const a = maskData.data[sourceIndex + 3];
+        
+        // If pixel is masked (has purple color), make it white, otherwise keep black
+        if (r >= 100 && g >= 50 && b >= 200 && a >= 100) {
+          originalSizeMaskData.data[targetIndex] = 255;     // R
+          originalSizeMaskData.data[targetIndex + 1] = 255; // G
+          originalSizeMaskData.data[targetIndex + 2] = 255; // B
+          originalSizeMaskData.data[targetIndex + 3] = 255; // A
+        } else {
+          originalSizeMaskData.data[targetIndex] = 0;       // R
+          originalSizeMaskData.data[targetIndex + 1] = 0;   // G
+          originalSizeMaskData.data[targetIndex + 2] = 0;   // B
+          originalSizeMaskData.data[targetIndex + 3] = 255; // A
+        }
+      }
+    }
+    
+    // Put the scaled mask data to the original size canvas
+    originalSizeCtx.putImageData(originalSizeMaskData, 0, 0);
+    
+    return originalSizeCanvas.toDataURL('image/png');
+  };
+
   // Keyboard event handler
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -135,9 +202,7 @@ export function SimpleMaskCanvas({
     if (onCanvasReady) {
       onCanvasReady({
         getMaskDataUrl: () => {
-          const maskCanvas = maskCanvasRef.current;
-          if (!maskCanvas || !hasMask) return null;
-          return maskCanvas.toDataURL('image/png');
+          return getMaskDataAtOriginalSize();
         },
         getMaskedImageDataUrl: () => {
           return extractMaskedImage();
@@ -160,7 +225,7 @@ export function SimpleMaskCanvas({
         }
       });
     }
-  }, [onCanvasReady, hasMask]);
+  }, [onCanvasReady, hasMask, originalDimensions]);
 
   // Load and display image
   useEffect(() => {
@@ -178,6 +243,9 @@ export function SimpleMaskCanvas({
     img.crossOrigin = 'anonymous';
     
     img.onload = () => {
+      // Store original dimensions
+      setOriginalDimensions({ width: img.width, height: img.height });
+      
       // Calculate dimensions to fit container while maintaining aspect ratio
       const containerRect = container.getBoundingClientRect();
       // Use most of the container space with some padding
