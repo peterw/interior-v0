@@ -1,4 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { fal } from "@fal-ai/client";
+
+// Configure FAL client with API key
+fal.config({
+  credentials: process.env.FAL_API_KEY || "",
+});
 
 // In-memory storage for share links (in production, use database)
 const shareCache = new Map<string, any>();
@@ -90,42 +96,37 @@ export async function POST(request: NextRequest) {
     const prompts = stylePrompts[style] || stylePrompts["modern-minimalist"];
     const results: string[] = [];
 
-    // Generate 4 variations using BFL API
+    console.log("prompts", prompts);
+    
+    // Generate 4 variations using FAL API
     for (let i = 0; i < 4; i++) {
       const fullPrompt = prompt 
         ? `${prompt}. ${prompts[i]}` 
         : `Transform this room into: ${prompts[i]}`;
 
       try {
-        const bflResponse = await fetch("https://api.bfl.ai/v1/flux-dev-realism", {
-          method: "POST",
-          headers: {
-            "X-API-Key": process.env.FAL_API_KEY || "",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
+        const result = await fal.subscribe("fal-ai/flux-pro/kontext", {
+          input: {
             prompt: fullPrompt,
-            image: imageDataUrl,
-            width: 1024,
-            height: 1024,
-            prompt_upsampling: true,
-            safety_tolerance: 6,
-            seed: Math.floor(Math.random() * 1000000),
-            guidance: 30,
-            steps: 50,
-            output_format: "jpeg",
-            image_prompt_strength: 0.85,
-            style_strength: 0.9,
-          }),
+            image_url: imageDataUrl,
+          },
+          logs: true,
+          onQueueUpdate: (update) => {
+            if (update.status === "IN_PROGRESS") {
+              update.logs.map((log) => log.message).forEach(console.log);
+            }
+          },
         });
 
-        if (!bflResponse.ok) {
-          console.error(`BFL API error for variation ${i + 1}:`, bflResponse.status);
-          throw new Error(`Failed to generate variation ${i + 1}`);
+        console.log("Generated image:", result.data);
+        console.log("Request ID:", result.requestId);
+        
+        // The result.data contains the generated image URL
+        if (result.data && result.data.images && result.data.images.length > 0) {
+          results.push(result.data.images[0].url);
+        } else {
+          throw new Error(`Invalid response format for variation ${i + 1}`);
         }
-
-        const data = await bflResponse.json();
-        results.push(data.sample);
       } catch (error) {
         console.error(`Error generating variation ${i + 1}:`, error);
         // Use fallback image for failed generations
