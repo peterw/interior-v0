@@ -70,6 +70,53 @@ export function SimpleMaskCanvas({
     }
   };
 
+  // Extract masked image data
+  const extractMaskedImage = () => {
+    const canvas = canvasRef.current;
+    const maskCanvas = maskCanvasRef.current;
+    
+    if (!canvas || !maskCanvas || !hasMask) return null;
+    
+    const ctx = canvas.getContext('2d');
+    const maskCtx = maskCanvas.getContext('2d');
+    
+    if (!ctx || !maskCtx) return null;
+    
+    // Create a temporary canvas to extract the masked area
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = canvas.width;
+    tempCanvas.height = canvas.height;
+    const tempCtx = tempCanvas.getContext('2d');
+    
+    if (!tempCtx) return null;
+    
+    // Draw the original image
+    tempCtx.drawImage(canvas, 0, 0);
+    
+    // Get the mask data
+    const maskData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+    const imageData = tempCtx.getImageData(0, 0, canvas.width, canvas.height);
+    
+    // Apply mask to extract only the masked area
+    for (let i = 0; i < maskData.data.length; i += 4) {
+      // Check if this pixel is masked (has purple color)
+      const r = maskData.data[i];
+      const g = maskData.data[i + 1];
+      const b = maskData.data[i + 2];
+      const a = maskData.data[i + 3];
+      
+      // If pixel is not masked (no purple color), make it transparent
+      if (r < 100 || g < 50 || b < 200 || a < 100) {
+        imageData.data[i + 3] = 0; // Set alpha to 0 (transparent)
+      }
+    }
+    
+    // Put the masked image data back to temp canvas
+    tempCtx.putImageData(imageData, 0, 0);
+    
+    return tempCanvas.toDataURL('image/png');
+  };
+
   // Keyboard event handler
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -91,6 +138,9 @@ export function SimpleMaskCanvas({
           const maskCanvas = maskCanvasRef.current;
           if (!maskCanvas || !hasMask) return null;
           return maskCanvas.toDataURL('image/png');
+        },
+        getMaskedImageDataUrl: () => {
+          return extractMaskedImage();
         },
         clearMask: () => {
           const maskCanvas = maskCanvasRef.current;

@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
             variationPrompt = variations[i % variations.length];
           }
           
-          const result = await convex.action(api.interior.generatePreview, {
+          const result = await convex.action(api.interior.createGeneration, {
             originalImageUrl,
             styleId: style,
             maskDataUrl,

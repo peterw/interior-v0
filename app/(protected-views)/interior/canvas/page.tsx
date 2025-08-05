@@ -44,6 +44,7 @@ export default function CanvasPage() {
   const [brushSize, setBrushSize] = useState(30);
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isLoadingNewImage, setIsLoadingNewImage] = useState(false);
   const [canvasRef, setCanvasRef] = useState<any>(null);
 
   // Load image from URL params or default to first history item
@@ -77,27 +78,77 @@ export default function CanvasPage() {
     try {
       // Get mask data from canvas
       const maskData = canvasRef.getMaskDataUrl();
+      const maskedImageData = canvasRef.getMaskedImageDataUrl();
       
-      if (!maskData) {
+      console.log("maskData", maskData);
+      console.log("maskedImageData", maskedImageData);
+      
+      if (!maskData || !maskedImageData) {
         throw new Error('No mask data available');
       }
 
-      // Simulate API call - in production this would call your backend
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      toast({
-        title: "Design generated!",
-        description: "Your changes have been applied successfully.",
+      // Convert mask data URL to File object
+      const maskResponse = await fetch(maskData);
+      const maskBlob = await maskResponse.blob();
+      const maskFile = new File([maskBlob], 'mask.png', { type: 'image/png' });
+
+      // Convert masked image data URL to File object
+      const maskedImageResponse = await fetch(maskedImageData);
+      const maskedImageBlob = await maskedImageResponse.blob();
+      const maskedImageFile = new File([maskedImageBlob], 'masked_image.png', { type: 'image/png' });
+
+      // Create FormData for API call
+      const formData = new FormData();
+      formData.append('mask', maskFile);
+      formData.append('maskedImage', maskedImageFile);
+      formData.append('prompt', prompt);
+      formData.append('originalImage', selectedImage || '');
+
+      // Call the actual API
+      const apiResponse = await fetch('/interior/api/canvas-edit', {
+        method: 'POST',
+        body: formData,
       });
+
+      if (!apiResponse.ok) {
+        const errorData = await apiResponse.json();
+        throw new Error(errorData.error || 'Failed to generate design');
+      }
+
+      const result = await apiResponse.json();
       
-      // Reset after generation
-      setPrompt('');
-      canvasRef.clearMask();
-      
+      if (result.success && result.editedImage) {
+        toast({
+          title: "Design generated!",
+          description: "Your changes have been applied successfully.",
+        });
+        
+        // Update the selected image to show the generated result
+        setIsLoadingNewImage(true);
+        setSelectedImage(result.editedImage);
+        
+        // Reset after generation
+        setPrompt('');
+        if (canvasRef) {
+          canvasRef.clearMask();
+        }
+        
+        console.log("Generated image loaded:", result.editedImage);
+        
+        // Reset loading state after a short delay to allow image to load
+        setTimeout(() => {
+          setIsLoadingNewImage(false);
+        }, 1000);
+      } else {
+        throw new Error('No edited image received from server');
+      }
     } catch (error) {
+      // Reset loading state on error
+      setIsLoadingNewImage(false);
+      
       toast({
         title: "Generation failed",
-        description: "Failed to generate new design. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to generate new design. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -154,7 +205,15 @@ export default function CanvasPage() {
         </div>
 
         {/* Center - Canvas */}
-        <div className="flex-1 bg-gray-100 p-6">
+        <div className="flex-1 bg-gray-100 p-6 relative">
+          {isLoadingNewImage && (
+            <div className="absolute inset-0 bg-gray-100 bg-opacity-75 flex items-center justify-center z-10">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-2"></div>
+                <p className="text-sm text-gray-600">Loading new image...</p>
+              </div>
+            </div>
+          )}
           <SimpleMaskCanvas
             imageUrl={selectedImage}
             tool={tool}
